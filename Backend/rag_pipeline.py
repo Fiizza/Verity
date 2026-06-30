@@ -1,21 +1,29 @@
 import os
 from collections import defaultdict
 
+
 from groq import Groq
 from dotenv import load_dotenv
 
-
-
+# Load local .env file (works locally, ignored on Hugging Face if not present)
 load_dotenv()
 
+# Read environment variables
 API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
+# Validate API key
 if not API_KEY:
-    raise ValueError("GROQ_API_KEY not found in .env file")
+    raise ValueError(
+        "GROQ_API_KEY environment variable is missing.\n"
+        "For local development: add it to your .env file.\n"
+        "For Hugging Face Spaces: add it in Settings → Variables and secrets."
+    )
 
+# Initialize Groq client
 client = Groq(api_key=API_KEY)
 
+# Maximum context length sent to the LLM
 MAX_CONTEXT_CHARS = 18000
 
 
