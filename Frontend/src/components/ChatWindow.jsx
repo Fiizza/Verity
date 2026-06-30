@@ -34,7 +34,23 @@ export default function ChatWindow({ session }) {
         },
       ])
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Something went wrong.")
+      // FIX: a 404 here specifically means the server-side session/index
+      // is gone (e.g. the host restarted and wiped ephemeral storage on
+      // a free tier) — not a generic network hiccup. Surface that clearly
+      // instead of leaving the question hanging with a console error.
+      if (err.response?.status === 404) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            text: "This session expired — the server restarted and lost the index for this document. Please re-upload the PDF to continue.",
+            sources: null,
+          },
+        ])
+        toast.error("Session expired. Please re-upload your PDF.")
+      } else {
+        toast.error(err.response?.data?.detail || "Something went wrong.")
+      }
     } finally {
       setLoading(false)
     }

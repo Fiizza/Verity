@@ -2,6 +2,7 @@ import os
 import uuid
 import shutil
 import logging
+from collections import OrderedDict
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,17 +49,46 @@ app.add_middleware(
 
 
 
-UPLOADS_DIR = "uploads"
-INDEX_DIR = "indices"
+# FIX: configurable data root. On HF Spaces' free tier, the local
+# filesystem is ephemeral — everything here is wiped on every container
+# restart, which is why sessions/PDFs/indices were vanishing mid-use.
+# If you attach Persistent Storage (or mount any other volume), just set
+# the DATA_DIR env var to that mount path (e.g. "/data") and every path
+# below automatically moves there with zero further code changes.
+DATA_DIR = os.getenv("DATA_DIR", ".")
+
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+INDEX_DIR = os.path.join(DATA_DIR, "indices")
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(INDEX_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# FIX: cap how many FAISS indices we keep cached in memory at once.
+# Previously this dict grew forever (one full embedding index per
+# uploaded PDF, never evicted) which is a likely contributor to the
+# free-tier container running out of memory and restarting mid-session.
+# Oldest-used entries get evicted once the cap is hit; they still exist
+# on disk and get reloaded transparently on the next request.
+MAX_CACHED_STORES = 5
+
+vector_stores = OrderedDict()
 
 
-vector_stores = {}
+def cache_vector_store(session_id: str, store) -> None:
+    vector_stores[session_id] = store
+    vector_stores.move_to_end(session_id)
+    while len(vector_stores) > MAX_CACHED_STORES:
+        evicted_id, _ = vector_stores.popitem(last=False)
+        logger.info(f"Evicted vector store for session {evicted_id} from memory cache.")
+
+
+def get_cached_vector_store(session_id: str):
+    store = vector_stores.get(session_id)
+    if store is not None:
+        vector_stores.move_to_end(session_id)
+    return store
 
 
 
@@ -161,8 +191,8 @@ async def upload_pdf(file: UploadFile = File(...), x_client_id: str = Header(...
         client_id=x_client_id
     )
 
-    # Cache in memory
-    vector_stores[session_id] = vector_store
+    # Cache in memory (capped, oldest evicted automatically)
+    cache_vector_store(session_id, vector_store)
 
     return {
         "message": "PDF uploaded and indexed successfully.",
@@ -183,21 +213,28 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
     # before answering anything from it (or even loading its index).
     get_owned_session(request.session_id, x_client_id)
 
-    # Load from memory or disk
-    if request.session_id not in vector_stores:
+    # Load from memory (if still cached) or disk
+    cached_store = get_cached_vector_store(request.session_id)
+    if cached_store is None:
         index_path = os.path.join(INDEX_DIR, request.session_id)
         if not os.path.exists(index_path):
+            # FIX: this is the expected, correct response when the
+            # underlying index genuinely no longer exists on disk — e.g.
+            # the container restarted and wiped ephemeral storage. The
+            # frontend now surfaces this clearly instead of a raw network
+            # error (see api.js / ChatWindow.jsx).
             raise HTTPException(status_code=404, detail="Session not found. Please upload a PDF first.")
         logger.info("Loading FAISS index from disk...")
-        vector_stores[request.session_id] = FAISS.load_local(
+        cached_store = FAISS.load_local(
             index_path,
             embeddings,
             allow_dangerous_deserialization=True
         )
+        cache_vector_store(request.session_id, cached_store)
 
     # Retrieve
     retrieved_chunks = search_vector_store(
-        vector_stores[request.session_id],
+        cached_store,
         request.question,
         k=15
     )

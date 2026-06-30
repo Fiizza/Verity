@@ -1,16 +1,25 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { PenLine } from "lucide-react"
 import Navbar from "./components/Navbar"
 import UploadZone from "./components/UploadZone"
 import ChatWindow from "./components/ChatWindow"
 import Sidebar from "./components/Sidebar"
+import { pingHealth } from "./api"
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
   // FIX: sidebar is now a slide-in drawer on mobile, controlled from here
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // FIX: keep the backend warm while the tab is open, to reduce
+  // idle-sleep restarts (and the data loss that comes with them on
+  // free-tier ephemeral hosting) during an active session.
+  useEffect(() => {
+    const interval = setInterval(pingHealth, 4 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleUpload = (data) => {
     setSession(data)
@@ -100,3 +109,4 @@ export default function App() {
     </div>
   )
 }
+

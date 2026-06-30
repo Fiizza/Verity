@@ -60,3 +60,16 @@ export const deleteSession = async (session_id) => {
   const res = await api.delete(`/sessions/${session_id}`);
   return res.data;
 };
+
+// FIX: free-tier hosts (e.g. HF Spaces) put the backend to sleep after a
+// period of inactivity, and waking up / restarting wipes its ephemeral
+// storage mid-session. A lightweight ping while the tab is open keeps the
+// container warm during active use — it won't survive memory-pressure
+// restarts, but it cuts down on idle-triggered ones.
+export const pingHealth = async () => {
+  try {
+    await api.get("/health");
+  } catch {
+    // Silent — this is best-effort, not user-facing.
+  }
+};

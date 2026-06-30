@@ -2,7 +2,10 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = "rag_sessions.db"
+# FIX: configurable data root, matching main.py — if DATA_DIR points at a
+# persistent volume, the SQLite file lives there too and survives restarts.
+DATA_DIR = os.getenv("DATA_DIR", ".")
+DB_PATH = os.path.join(DATA_DIR, "rag_sessions.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
