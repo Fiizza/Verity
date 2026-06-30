@@ -11,8 +11,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Push to Hugging Face Space
+      - name: Deploy
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -21,4 +23,6 @@ jobs:
 
           git remote add hf https://oauth2:${HF_TOKEN}@huggingface.co/spaces/fizzaakra0-7mm/Verity
 
-          git push hf main --force
+          git fetch --unshallow || true
+
+          git push --force hf HEAD:main
