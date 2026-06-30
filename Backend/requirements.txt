@@ -10,3 +10,4 @@ groq
 python-dotenv
 pydantic
 aiosqlite
+langchain-huggingface

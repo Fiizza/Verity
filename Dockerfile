@@ -7,13 +7,11 @@ ENV PATH="/home/user/.local/bin:$PATH"
 WORKDIR /app
 
 COPY --chown=user Backend/requirements.txt .
-
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 COPY --chown=user Backend/ .
 
 RUN mkdir -p uploads indices /home/user/.cache/huggingface
-
 ENV HF_HOME=/home/user/.cache/huggingface
 
 EXPOSE 7860
