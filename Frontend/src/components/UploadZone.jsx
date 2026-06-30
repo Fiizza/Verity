@@ -35,7 +35,7 @@ export default function UploadZone({ onUpload }) {
   return (
     <div
       {...getRootProps()}
-      className={`group relative mx-auto max-w-md overflow-hidden rounded-2xl p-8 text-center cursor-pointer transition-all duration-300
+      className={`group relative mx-auto w-full max-w-md overflow-hidden rounded-2xl p-5 sm:p-8 text-center cursor-pointer transition-all duration-300
         ${
           isDragActive
             ? "bg-primary/10 shadow-glow scale-[1.01]"
@@ -60,11 +60,11 @@ export default function UploadZone({ onUpload }) {
       </svg>
 
       <input {...getInputProps()} />
-      <div className="relative flex flex-col items-center gap-4">
+      <div className="relative flex flex-col items-center gap-3 sm:gap-4">
         {uploading ? (
           <>
-            <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary animate-spin" />
             </div>
             <div>
               <p className="text-text font-medium text-sm">Indexing your PDF…</p>
@@ -74,17 +74,17 @@ export default function UploadZone({ onUpload }) {
         ) : (
           <>
             <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300
+              className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-300
                 ${isDragActive ? "bg-primary-gradient shadow-glow-sm scale-110" : "bg-primary/12 group-hover:scale-105"}`}
             >
               {isDragActive ? (
-                <FileText className="w-6 h-6 text-white" />
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               ) : (
-                <Upload className="w-6 h-6 text-primary" />
+                <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               )}
             </div>
-            <div>
-              <p className="text-text font-semibold text-base tracking-tight">
+            <div className="px-2">
+              <p className="text-text font-semibold text-sm sm:text-base tracking-tight">
                 {isDragActive ? "Drop your PDF here" : "Drag & drop your PDF"}
               </p>
               <p className="text-muted text-xs mt-1">

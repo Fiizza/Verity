@@ -9,6 +9,8 @@ import Sidebar from "./components/Sidebar"
 export default function App() {
   const [session, setSession] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  // FIX: sidebar is now a slide-in drawer on mobile, controlled from here
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleUpload = (data) => {
     setSession(data)
@@ -21,6 +23,7 @@ export default function App() {
       filename: selectedSession.filename,
       pages_indexed: selectedSession.pages_indexed,
     })
+    setSidebarOpen(false)
   }
 
   return (
@@ -39,21 +42,31 @@ export default function App() {
         }}
       />
 
-      <Navbar showBack={!!session} onBack={() => setSession(null)} />
+      <Navbar
+        showBack={!!session}
+        onBack={() => setSession(null)}
+        onToggleSidebar={() => setSidebarOpen((o) => !o)}
+      />
 
       <div className="flex flex-1 pt-16 h-[calc(100vh-4rem)]">
         {/* Sidebar */}
-        <Sidebar key={refreshKey} currentSession={session} onSelectSession={handleSelectSession} />
+        <Sidebar
+          key={refreshKey}
+          currentSession={session}
+          onSelectSession={handleSelectSession}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
 
         {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
           {!session ? (
-            <div key="upload" className="flex-1 flex flex-col items-center justify-center px-8 animate-fade-in">
+            <div key="upload" className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 animate-fade-in">
               <div className="w-full max-w-2xl">
-                <div className="text-center mb-10">
+                <div className="text-center mb-8 sm:mb-10">
                   {/* Animated, stylized Verity wordmark */}
                   <h1 className="mb-3 flex flex-col items-center">
-                    <span className="inline-flex items-end justify-center text-4xl md:text-5xl text-balance leading-tight overflow-visible pb-1">
+                    <span className="inline-flex items-end justify-center text-3xl sm:text-4xl md:text-5xl text-balance leading-tight overflow-visible pb-1">
                       <span className="verity-mark verity-mark-float">Verity</span>
                       
                     </span>
@@ -69,7 +82,7 @@ export default function App() {
           ) : (
             <div
               key="chat"
-              className="flex-1 flex flex-col overflow-hidden m-4 glass border border-border rounded-2xl shadow-soft animate-fade-in"
+              className="flex-1 flex flex-col overflow-hidden m-2 sm:m-4 glass border border-border rounded-2xl shadow-soft animate-fade-in"
             >
               <ChatWindow session={session} />
               <div className="px-4 py-2.5 border-t border-border/70 text-center">

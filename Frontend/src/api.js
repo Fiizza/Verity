@@ -4,12 +4,29 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 console.log("API_URL =", API_URL);
 
+// FIX: per-user session isolation. Each browser gets its own persistent
+// client ID, stored in localStorage. We send it as X-Client-Id on every
+// request so the backend only ever shows this browser its own uploaded
+// documents and chat history — not whoever else opens the same link.
+const getClientId = () => {
+  let id = localStorage.getItem("verity_client_id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("verity_client_id", id);
+  }
+  return id;
+};
+
+export const CLIENT_ID = getClientId();
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
+    "X-Client-Id": CLIENT_ID,
   },
 });
+
 export const uploadPDF = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -17,6 +34,7 @@ export const uploadPDF = async (file) => {
   const res = await axios.post(`${API_URL}/upload`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
+      "X-Client-Id": CLIENT_ID,
     },
   });
 

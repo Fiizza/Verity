@@ -43,9 +43,9 @@ export default function ChatWindow({ session }) {
   return (
     <div className="flex flex-col h-full">
       {/* Session info */}
-      <div className="px-5 py-4 border-b border-border/70 glass-strong rounded-t-2xl flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/12 flex items-center justify-center flex-shrink-0">
-          <FileText className="w-4 h-4 text-primary-soft" />
+      <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-border/70 glass-strong rounded-t-2xl flex items-center gap-2.5 sm:gap-3">
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/12 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-soft" />
         </div>
         <div className="min-w-0">
           <p className="text-text text-sm font-medium truncate">{session.filename}</p>
@@ -54,9 +54,9 @@ export default function ChatWindow({ session }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in">
+          <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in px-2">
             <div className="w-16 h-16 rounded-2xl bg-primary/12 flex items-center justify-center mb-5 shadow-glow-sm">
               <MessageSquareText className="w-7 h-7 text-primary-soft" />
             </div>
@@ -72,7 +72,7 @@ export default function ChatWindow({ session }) {
             className={`flex animate-fade-up ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+              className={`max-w-[92%] sm:max-w-[80%] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 ${
                 msg.role === "user"
                   ? "bg-primary-gradient text-white shadow-glow-sm rounded-br-md"
                   : "glass border border-border text-text rounded-bl-md"
@@ -98,11 +98,11 @@ export default function ChatWindow({ session }) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-border/70">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
+      <div className="p-3 sm:p-4 border-t border-border/70">
+        <div className="flex gap-2 sm:gap-3">
+          <div className="flex-1 relative min-w-0">
             <input
-              className="w-full glass border border-border rounded-xl pl-4 pr-16 py-3 text-text placeholder-muted text-sm outline-none focus:border-primary/60 focus:shadow-glow-sm transition-all"
+              className="w-full glass border border-border rounded-xl pl-3.5 sm:pl-4 pr-14 sm:pr-16 py-2.5 sm:py-3 text-text placeholder-muted text-sm outline-none focus:border-primary/60 focus:shadow-glow-sm transition-all"
               placeholder="Ask a question about your document…"
               value={input}
               maxLength={MAX_CHARS}
@@ -122,7 +122,7 @@ export default function ChatWindow({ session }) {
           <button
             onClick={send}
             disabled={loading || !input.trim()}
-            className="bg-primary-gradient hover:opacity-90 disabled:opacity-30 disabled:shadow-none text-white rounded-xl px-4 py-3 transition-all shadow-glow-sm"
+            className="bg-primary-gradient hover:opacity-90 disabled:opacity-30 disabled:shadow-none text-white rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 transition-all shadow-glow-sm flex-shrink-0"
             aria-label="Send question"
           >
             <Send className="w-4 h-4" />

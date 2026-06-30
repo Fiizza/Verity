@@ -3,7 +3,7 @@ import uuid
 import shutil
 import logging
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -67,6 +67,23 @@ class QuestionRequest(BaseModel):
     question: str
 
 
+# FIX: per-user isolation. Every browser sends a stable client ID
+# (generated and stored in localStorage on the frontend) via this header.
+# We use it to scope which sessions a request is allowed to see/touch, so
+# that sharing the app link with someone else never exposes your uploaded
+# documents or chat history to them.
+def require_client_id(x_client_id: str = Header(..., alias="X-Client-Id")) -> str:
+    if not x_client_id.strip():
+        raise HTTPException(status_code=400, detail="Missing X-Client-Id header.")
+    return x_client_id
+
+
+def get_owned_session(session_id: str, client_id: str) -> dict:
+    session = get_session(session_id)
+    if not session or session.get("client_id") != client_id:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return session
+
 
 @app.get("/health")
 def health():
@@ -74,28 +91,23 @@ def health():
 
 
 @app.get("/sessions")
-def list_sessions():
-    return get_all_sessions()
+def list_sessions(x_client_id: str = Header(..., alias="X-Client-Id")):
+    return get_all_sessions(x_client_id)
 
 
 @app.get("/sessions/{session_id}")
-def get_session_info(session_id: str):
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
-    return session
+def get_session_info(session_id: str, x_client_id: str = Header(..., alias="X-Client-Id")):
+    return get_owned_session(session_id, x_client_id)
 
 
 @app.get("/sessions/{session_id}/history")
-def get_history(session_id: str):
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
+def get_history(session_id: str, x_client_id: str = Header(..., alias="X-Client-Id")):
+    get_owned_session(session_id, x_client_id)
     return get_session_queries(session_id)
 
 
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), x_client_id: str = Header(..., alias="X-Client-Id")):
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file selected.")
@@ -138,14 +150,15 @@ async def upload_pdf(file: UploadFile = File(...)):
     file_size_kb = len(contents) // 1024
     save_metadata(session_id, file.filename, len(pages), file_size_kb, index_path)
 
-    # Save to SQLite
+    # Save to SQLite (tagged with the owning client)
     save_session(
         session_id=session_id,
         filename=file.filename,
         pages_indexed=len(pages),
         file_size_kb=file_size_kb,
         index_path=index_path,
-        pdf_path=pdf_path
+        pdf_path=pdf_path,
+        client_id=x_client_id
     )
 
     # Cache in memory
@@ -161,10 +174,14 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @app.post("/ask")
-def ask_question(request: QuestionRequest):
+def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias="X-Client-Id")):
 
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    # FIX: confirm this session actually belongs to the requesting client
+    # before answering anything from it (or even loading its index).
+    get_owned_session(request.session_id, x_client_id)
 
     # Load from memory or disk
     if request.session_id not in vector_stores:
@@ -230,10 +247,8 @@ def ask_question(request: QuestionRequest):
 
 
 @app.delete("/sessions/{session_id}")
-def delete_session(session_id: str):
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
+def delete_session(session_id: str, x_client_id: str = Header(..., alias="X-Client-Id")):
+    session = get_owned_session(session_id, x_client_id)
 
     # Remove files from disk
     if os.path.exists(session["pdf_path"]):
