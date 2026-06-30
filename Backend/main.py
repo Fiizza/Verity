@@ -202,6 +202,9 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
         k=15
     )
 
+    # TEMP DEBUG: remove once root cause is found
+    logger.info(f"Q: {request.question!r} -> retrieved {len(retrieved_chunks)} chunks")
+
     if not retrieved_chunks:
         return {
             "answer": "I couldn't find any relevant information in the uploaded document.",
@@ -225,6 +228,9 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
     rerank_top_k = 12 if is_enumeration_query else 6
 
     best_chunks = rerank_chunks(request.question, retrieved_chunks, top_k=rerank_top_k)
+
+    # TEMP DEBUG: remove once root cause is found
+    logger.info(f"Q: {request.question!r} -> reranked to {len(best_chunks)} chunks (top_k={rerank_top_k})")
 
     # If reranker still returns nothing (edge case), fall back to
     # top 5 raw retrieved chunks so we never pass an empty list to the LLM.
