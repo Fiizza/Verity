@@ -1,0 +1,31 @@
+
+Backend/venv/
+Backend/__pycache__/
+Backend/*.py[cod]
+Backend/.pytest_cache/
+Backend/.mypy_cache/
+
+# Environment variables
+Backend/.env
+Frontend/.env
+Frontend/.env.local
+
+# Database
+Backend/*.db
+Backend/*.sqlite3
+
+# Generated files
+Backend/uploads/
+Backend/indices/
+Backend/logs/
+
+
+Frontend/node_modules/
+Frontend/dist/
+
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
