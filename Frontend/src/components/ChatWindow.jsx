@@ -23,7 +23,9 @@ export default function ChatWindow({ session }) {
     getHistory(session.session_id)
       .then((data) => {
         if (!data?.length) return
-        const loaded = data.flatMap((item) => [
+        // Backend returns DESC (newest first) — reverse so the chat renders
+        // oldest → newest, with the input bar ready to continue at the bottom.
+        const loaded = [...data].reverse().flatMap((item) => [
           { role: "user", text: item.question },
           { role: "assistant", text: item.answer, sources: null, pages: item.pages_used },
         ])
