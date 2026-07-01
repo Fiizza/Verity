@@ -3,9 +3,7 @@ title: Verity
 sdk: docker
 ---
 
-# Verity: Retrieval-Augmented PDF Platform
 
-...
 # Verity: PDF Research Platform
 
 Verity is an AI-powered research platform that enables users to upload PDF documents and ask questions in natural language. It leverages a Retrieval-Augmented Generation (RAG) pipeline to retrieve relevant information and generate accurate, grounded responses with page-level citations.
