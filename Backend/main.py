@@ -355,12 +355,13 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
         if retry_result.get("sources"):
             result = retry_result
 
-    # Save query to DB
+    # Save query to DB (sources persisted so resumed sessions show full citations)
     save_query(
         session_id=request.session_id,
         question=request.question,
         answer=result["answer"],
-        pages_used=result.get("pages", [])
+        pages_used=result.get("pages", []),
+        sources=result.get("sources", []),
     )
 
     return result

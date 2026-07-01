@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import json
 from datetime import datetime
 
 # FIX: configurable data root, matching main.py — if DATA_DIR points at a
@@ -39,9 +40,18 @@ def init_db():
             answer         TEXT NOT NULL,
             pages_used     TEXT NOT NULL,
             asked_at       TEXT NOT NULL,
+            sources_json   TEXT,
             FOREIGN KEY (session_id) REFERENCES sessions(session_id)
         )
     """)
+
+    # Migration: add sources_json to pre-existing DBs that were created before
+    # this column existed. Old rows will have NULL, which the fetch handles fine.
+    cursor.execute("PRAGMA table_info(queries)")
+    query_cols = [row[1] for row in cursor.fetchall()]
+    if "sources_json" not in query_cols:
+        cursor.execute("ALTER TABLE queries ADD COLUMN sources_json TEXT")
+
     conn.commit()
     conn.close()
 
@@ -66,19 +76,20 @@ def save_session(session_id: str, filename: str, pages_indexed: int,
     conn.commit()
     conn.close()
 
-def save_query(session_id: str, question: str, answer: str, pages_used: list):
+def save_query(session_id: str, question: str, answer: str, pages_used: list, sources: list = None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO queries
-        (session_id, question, answer, pages_used, asked_at)
-        VALUES (?, ?, ?, ?, ?)
+        (session_id, question, answer, pages_used, asked_at, sources_json)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
         session_id,
         question,
         answer,
         ",".join(str(p) for p in pages_used),
-        datetime.utcnow().isoformat()
+        datetime.utcnow().isoformat(),
+        json.dumps(sources) if sources else None,
     ))
     conn.commit()
     conn.close()
@@ -131,7 +142,7 @@ def get_session_queries(session_id: str) -> list[dict]:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT question, answer, pages_used, asked_at FROM queries WHERE session_id = ? ORDER BY asked_at DESC",
+        "SELECT question, answer, pages_used, asked_at, sources_json FROM queries WHERE session_id = ? ORDER BY asked_at DESC",
         (session_id,)
     )
     rows = cursor.fetchall()
@@ -141,14 +152,13 @@ def get_session_queries(session_id: str) -> list[dict]:
             "question": r[0],
             "answer": r[1],
             "pages_used": r[2],
-            "asked_at": r[3]
+            "asked_at": r[3],
+            "sources": json.loads(r[4]) if r[4] else None,
         }
         for r in rows
     ]
 
-# FIX: This function was missing entirely.
-# Without it, DELETE /sessions/{id} never touched the DB,
-# so deleted sessions reappeared on every page reload.
+
 def delete_session_from_db(session_id: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
