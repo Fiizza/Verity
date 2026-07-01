@@ -1,38 +1,117 @@
-# Verity — AI Research Assistant for PDFs
+# Verity: Retrieval-Augmented PDF Research Platform
 
-Verity lets you upload a PDF and ask questions about it in natural language. It retrieves the most relevant passages using vector search + reranking, then generates a grounded answer with page-level citations.
+Verity is an AI-powered research platform that enables users to upload PDF documents and ask questions in natural language. It leverages a Retrieval-Augmented Generation (RAG) pipeline to retrieve relevant information and generate accurate, grounded responses with page-level citations.
 
 ---
 
 ## Features
 
-- Drag-and-drop PDF upload (up to 10MB), parsed and indexed automatically
-- Conversational Q&A with inline citations showing source pages
-- Per-browser session isolation via a private client ID — no cross-user data leaks on a shared link
-- Browsable, deletable session history with full query logs
-- Smart query handling: overview questions pull from first/last pages directly; enumeration questions ("list all tables") pin every matching chunk; failed answers get one automatic retry with broader context
-- Deterministic answers — a context-derived seed keeps repeated questions consistent
-- Light/dark mode with persisted preference
-- Resilient to ephemeral hosting — configurable `DATA_DIR` for persistent storage, plus periodic health pings to reduce idle restarts
+- Upload PDF files (up to 10 MB) with automatic parsing and indexing.
+- Ask questions in natural language and receive contextual answers.
+- Page-level citations for transparent and verifiable responses.
+- Browser-specific session isolation using unique client IDs.
+- Persistent session history with complete query logs.
+- Smart retrieval for overview and enumeration-based questions.
+- Deterministic responses for improved answer consistency.
+- Light and Dark mode support.
+- Persistent storage support through configurable `DATA_DIR`.
 
 ---
 
-## How it works (RAG pipeline)
+## System Architecture
 
-1. **Parse** — PyMuPDF extracts text page-by-page (`pdf_parser.py`)
-2. **Chunk & embed** — pages are split with LangChain and embedded via `BAAI/bge-base-en-v1.5` into a FAISS index (`vector_store.py`)
-3. **Retrieve** — FAISS MMR search, with page-1, last-page, and table-mention chunks always pinned into the candidate pool
-4. **Rerank** — a CrossEncoder (`ms-marco-MiniLM-L-6-v2`) reorders candidates by relevance; meta/overview questions skip this and use pinned pages directly (`reranker.py`)
-5. **Generate** — top chunks go to a Groq LLM with a strict grounding prompt: answer only from provided pages, cite them, or say nothing was found (`rag_pipeline.py`)
-6. **Persist** — question, answer, and pages used are saved to SQLite, scoped to the requesting client (`database.py`)
+```
+                User
+                  │
+                  ▼
+          React Frontend
+                  │
+                  ▼
+          FastAPI Backend
+                  │
+    ┌─────────────┼─────────────┐
+    │             │             │
+    ▼             ▼             ▼
+PDF Parser   Vector Store   SQLite Database
+(PyMuPDF)      (FAISS)         Sessions
+    │
+    ▼
+CrossEncoder Reranker
+    │
+    ▼
+Groq Large Language Model
+    │
+    ▼
+Grounded Response with Citations
+```
 
 ---
 
-## Tech Stack
+## Retrieval-Augmented Generation (RAG) Pipeline
 
-**Backend:** FastAPI, PyMuPDF, LangChain, FAISS, sentence-transformers (CrossEncoder), HuggingFace embeddings, Groq API, SQLite
+### 1. PDF Parsing
 
-**Frontend:** React, Vite, Tailwind CSS, Axios, react-dropzone, react-hot-toast, lucide-react
+Documents are parsed page by page using **PyMuPDF**.
+
+### 2. Chunking & Embeddings
+
+Extracted text is divided into chunks and converted into vector embeddings using:
+
+- BAAI/bge-base-en-v1.5
+
+The embeddings are stored inside a **FAISS Vector Database**.
+
+### 3. Retrieval
+
+Relevant document chunks are retrieved using:
+
+- FAISS
+- Maximum Marginal Relevance (MMR)
+- Pinned first/last pages
+- Table-aware retrieval
+
+### 4. Reranking
+
+Retrieved chunks are reranked using:
+
+- CrossEncoder
+- ms-marco-MiniLM-L-6-v2
+
+to improve relevance before generation.
+
+### 5. Response Generation
+
+The highest-ranked chunks are passed to a **Groq LLM**, which generates grounded responses using only the retrieved context.
+
+### 6. Persistence
+
+Session metadata, questions, answers, and citation history are stored in **SQLite**.
+
+---
+
+## Technology Stack
+
+### Backend
+
+- FastAPI
+- PyMuPDF
+- LangChain
+- FAISS
+- HuggingFace Embeddings
+- Sentence Transformers
+- CrossEncoder
+- Groq API
+- SQLite
+
+### Frontend
+
+- React
+- Vite
+- Tailwind CSS
+- Axios
+- React Dropzone
+- React Hot Toast
+- Lucide React
 
 ---
 
@@ -40,13 +119,13 @@ Verity lets you upload a PDF and ask questions about it in natural language. It 
 
 ```
 backend/
-├── main.py            # FastAPI routes + retrieval/answer orchestration
-├── pdf_parser.py       # PDF text extraction
-├── vector_store.py     # Chunking, embedding, FAISS search + pinning
-├── reranker.py          # CrossEncoder reranking
-├── rag_pipeline.py     # Prompting + Groq LLM call
-├── database.py         # SQLite session/query persistence
-├── metadata.py         # Per-session metadata.json
+├── main.py
+├── pdf_parser.py
+├── vector_store.py
+├── reranker.py
+├── rag_pipeline.py
+├── database.py
+├── metadata.py
 └── requirements.txt
 
 frontend/
@@ -63,38 +142,55 @@ frontend/
 
 ---
 
-## Setup
+## Installation
 
 ### Backend
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+
+python -m venv venv
+
+source venv/bin/activate
+# Windows
+venv\Scripts\activate
+
 pip install -r requirements.txt
 ```
 
-`.env`:
+### Environment Variables
+
 ```env
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.3-70b-versatile   # optional, default shown
-DATA_DIR=.                           # optional; point at a persistent volume in production
+GROQ_API_KEY=your_api_key
+
+GROQ_MODEL=llama-3.3-70b-versatile
+
+DATA_DIR=.
 ```
+
+Run the backend:
 
 ```bash
 uvicorn main:app --reload
 ```
 
+---
+
 ### Frontend
 
 ```bash
 cd frontend
+
 npm install
 ```
 
-`.env`:
+Create a `.env` file.
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
+
+Run:
 
 ```bash
 npm run dev
@@ -102,18 +198,53 @@ npm run dev
 
 ---
 
-## API Reference
+## API Endpoints
 
-All routes except `/health` require an `X-Client-Id` header (generated once per browser, stored in `localStorage`).
-
-| Method | Route | Description |
-|---|---|---|
-| GET | `/health` | Liveness check |
-| POST | `/upload` | Upload + index a PDF (`multipart/form-data`, field `file`) |
-| POST | `/ask` | Ask a question — `{ session_id, question }` |
-| GET | `/sessions` | List sessions for the requesting client |
-| GET | `/sessions/{session_id}` | Get a session's metadata |
-| GET | `/sessions/{session_id}/history` | Get a session's Q&A history |
-| DELETE | `/sessions/{session_id}` | Delete a session and its files |
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/upload` | Upload and index a PDF |
+| POST | `/ask` | Ask questions |
+| GET | `/sessions` | Retrieve user sessions |
+| GET | `/sessions/{session_id}` | Session metadata |
+| GET | `/sessions/{session_id}/history` | Conversation history |
+| DELETE | `/sessions/{session_id}` | Delete session |
 
 ---
+
+## Design Highlights
+
+- Browser-level session isolation
+- Grounded responses with citations
+- CrossEncoder reranking for higher retrieval accuracy
+- Deterministic answer generation
+- Persistent conversation history
+- Modular backend architecture
+- Optimized semantic search using FAISS
+
+---
+
+## Deployment
+
+For production deployments, configure a persistent `DATA_DIR` to retain:
+
+- Uploaded PDFs
+- FAISS vector indexes
+- SQLite database
+- Session metadata
+
+If an index is unavailable after deployment, the application prompts the user to upload the document again.
+
+
+
+## License
+
+This project is intended for educational and research purposes.
+
+---
+
+## Author
+
+**Fizza Akram**
+
+GitHub: https://github.com/Fiizza
