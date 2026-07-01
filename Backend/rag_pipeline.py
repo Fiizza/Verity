@@ -1,4 +1,5 @@
 import os
+import hashlib
 from collections import defaultdict
 
 
@@ -79,12 +80,18 @@ Your ONLY knowledge source is the document context below.
 Follow these rules strictly:
 
 1. Read every retrieved page carefully.
-2. Identify ONLY the pages that directly answer the question.
+2. Identify the pages that are relevant to the question.
 3. Ignore unrelated retrieved pages.
 4. Never combine unrelated topics.
-5. Never invent information.
+5. Never invent facts, numbers, or claims that are not supported by the pages below.
 6. Never use outside knowledge.
-7. If the answer is not explicitly present, reply EXACTLY:
+6b. For general/overview questions (e.g. "what is this document about", "summarize this",
+    "what is this paper's main topic"), you MAY synthesize a concise summary using the
+    title, abstract, introduction, or conclusion content given below — this is not
+    "inventing," it is describing what is already in the provided pages. Only refuse if
+    the pages below truly contain nothing relevant to the question.
+7. If, and only if, none of the pages below contain information relevant to the
+   question, reply EXACTLY:
 
 "I couldn't find this information in the uploaded document. Try rephrasing your question or asking about a topic covered in the document."
 
@@ -118,6 +125,15 @@ Question:
 Answer:
 """
 
+    # FIX: root cause of "same PDF + same question gives different answers
+    # on different devices". temperature=0 alone does NOT guarantee
+    # deterministic output from Groq's inference stack. The Groq API
+    # supports an explicit `seed` param for reproducible sampling — derive
+    # it from the (context + query) so the SAME retrieved content always
+    # gets the SAME seed, while genuinely different context/questions still
+    # get different seeds.
+    seed = int(hashlib.sha256((context + query).encode("utf-8")).hexdigest(), 16) % (2**31)
+
     try:
 
         response = client.chat.completions.create(
@@ -129,6 +145,8 @@ Answer:
             top_p=1,
 
             max_tokens=700,
+
+            seed=seed,
 
             messages=[
 
