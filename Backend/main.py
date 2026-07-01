@@ -232,11 +232,22 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
         )
         cache_vector_store(request.session_id, cached_store)
 
+    # TEMP DEBUG: purely diagnostic, does not change behavior. Tells us
+    # whether the index this specific session is querying actually has
+    # content in it, or is silently empty/near-empty. If this number is 0
+    # (or way lower than pages_indexed would suggest), the bug is in the
+    # upload/indexing path for that specific request, not in retrieval.
+    try:
+        _doc_count = len(cached_store.docstore._dict)
+    except Exception:
+        _doc_count = "unknown"
+    logger.info(f"Session {request.session_id}: index has {_doc_count} chunks stored.")
+
     # Retrieve
     retrieved_chunks = search_vector_store(
         cached_store,
         request.question,
-        k=15
+        k=20
     )
 
     # TEMP DEBUG: remove once root cause is found
@@ -277,6 +288,41 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
 
     # Generate answer
     result = generate_answer(request.question, best_chunks)
+
+    # FIX: this is the real fix for the "couldn't find this information"
+    # false-negatives we confirmed in the query log (e.g. "what about table 1
+    # and table 2?" failed while "what about table 2" alone succeeded, on the
+    # SAME document, SAME backend). The reranker's top_k cutoff can drop
+    # candidates that vector_store.py deliberately pinned into the pool
+    # (page-1 / last-page / "Table N" pins) even though they were correctly
+    # retrieved. Rather than trusting a single reranked slice, if the LLM
+    # says it couldn't find an answer, retry once with a wider, unranked
+    # pool (raw retrieved_chunks, deduped by page) before giving up. This
+    # costs one extra LLM call ONLY on the failure path — normal answers are
+    # unaffected.
+    if not result.get("sources") and "couldn't find this information" in result["answer"].lower():
+        logger.info(f"Q: {request.question!r} -> first pass found nothing, retrying with broader context")
+
+        seen_pages = set()
+        broader_chunks = []
+        for chunk in best_chunks + retrieved_chunks:
+            key = (chunk["page"], chunk["text"])
+            if key in seen_pages:
+                continue
+            seen_pages.add(key)
+            broader_chunks.append(chunk)
+            if len(broader_chunks) >= 15:
+                break
+
+        retry_result = generate_answer(request.question, broader_chunks)
+
+        # TEMP DEBUG: remove once root cause is found
+        logger.info(
+            f"Q: {request.question!r} -> retry {'found an answer' if retry_result.get('sources') else 'still found nothing'}"
+        )
+
+        if retry_result.get("sources"):
+            result = retry_result
 
     # Save query to DB
     save_query(
