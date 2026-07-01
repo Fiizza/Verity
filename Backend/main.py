@@ -261,24 +261,55 @@ def ask_question(request: QuestionRequest, x_client_id: str = Header(..., alias=
             "num_sources": 0
         }
 
-    # FIX: enumeration-style questions ("list all tables", "how many
-    # tables") can have more relevant chunks than a normal focused
-    # question does — vector_store.py now pins every "Table N" chunk into
-    # the candidate pool for these queries, but a flat top_k=6 reranker
-    # cutoff could still silently drop some of them before they reach the
-    # LLM. Widen the cutoff just for this query type so pinned chunks
-    # aren't truncated away after being correctly retrieved.
     question_lower = request.question.lower()
     is_enumeration_query = any(
         kw in question_lower
         for kw in ("table", "tables", "how many", "list all", "all the", "every")
     )
-    rerank_top_k = 12 if is_enumeration_query else 6
 
-    best_chunks = rerank_chunks(request.question, retrieved_chunks, top_k=rerank_top_k)
+    # FIX: root cause of the "couldn't find this information" answers on
+    # broad/meta questions ("what is this about", "summarize this", "main
+    # topic"). vector_store.py already pins page-1 (title/abstract) and
+    # last-page chunks into retrieved_chunks so they're always candidates —
+    # but the CrossEncoder reranker is trained for factoid query/passage
+    # relevance and routinely scores these vague, non-factoid questions too
+    # low against every chunk (including the pinned ones), so the
+    # SCORE_THRESHOLD in reranker.py silently drops them before they ever
+    # reach the LLM. For this question type we bypass the reranker's
+    # relevance filter entirely and go straight to the pinned first/last
+    # page content, since that's what these questions are actually asking
+    # for.
+    is_meta_query = any(
+        kw in question_lower
+        for kw in (
+            "what is this document about", "what is this paper about",
+            "what is this about", "what's this about", "summarize",
+            "summary", "overview", "main topic", "main idea",
+            "what is this project about", "tell me about this document",
+            "what does this document cover", "abstract"
+        )
+    )
 
-    # TEMP DEBUG: remove once root cause is found
-    logger.info(f"Q: {request.question!r} -> reranked to {len(best_chunks)} chunks (top_k={rerank_top_k})")
+    if is_meta_query:
+        page_numbers = {c["page"] for c in retrieved_chunks}
+        first_page = min(page_numbers) if page_numbers else None
+        last_page = max(page_numbers) if page_numbers else None
+        best_chunks = [
+            c for c in retrieved_chunks
+            if c["page"] in (first_page, last_page)
+        ]
+        if not best_chunks:
+            best_chunks = retrieved_chunks[:8]
+        logger.info(
+            f"Q: {request.question!r} -> meta/overview query, bypassing reranker, "
+            f"using {len(best_chunks)} pinned first/last-page chunks"
+        )
+    else:
+        rerank_top_k = 12 if is_enumeration_query else 6
+        best_chunks = rerank_chunks(request.question, retrieved_chunks, top_k=rerank_top_k)
+
+        # TEMP DEBUG: remove once root cause is found
+        logger.info(f"Q: {request.question!r} -> reranked to {len(best_chunks)} chunks (top_k={rerank_top_k})")
 
     # If reranker still returns nothing (edge case), fall back to
     # top 5 raw retrieved chunks so we never pass an empty list to the LLM.
