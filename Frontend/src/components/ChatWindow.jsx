@@ -27,7 +27,20 @@ export default function ChatWindow({ session }) {
         // oldest → newest, with the input bar ready to continue at the bottom.
         const loaded = [...data].reverse().flatMap((item) => [
           { role: "user", text: item.question },
-          { role: "assistant", text: item.answer, sources: null, pages: item.pages_used },
+          {
+            role: "assistant",
+            text: item.answer,
+            // pages_used is stored as "3,4,9" — build minimal source objects so
+            // CitationCard renders its toggle with page badges. Text snippets
+            // aren't persisted in the DB, so the preview is intentionally blank.
+            sources: item.pages_used
+              ? item.pages_used
+                  .split(",")
+                  .map((p) => ({ page: parseInt(p.trim(), 10), text: "" }))
+                  .filter((s) => !isNaN(s.page))
+              : null,
+            pages: item.pages_used,
+          },
         ])
         setMessages(loaded)
       })
