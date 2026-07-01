@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { askQuestion } from "../api"
+import { askQuestion, getHistory } from "../api"
 import CitationCard from "./CitationCard"
 import toast from "react-hot-toast"
 import { Send, MessageSquareText, FileText } from "lucide-react"
@@ -15,6 +15,22 @@ export default function ChatWindow({ session }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Load existing chat history when session changes (e.g. switching from sidebar)
+  useEffect(() => {
+    setMessages([])
+    if (!session?.session_id) return
+    getHistory(session.session_id)
+      .then((data) => {
+        if (!data?.length) return
+        const loaded = data.flatMap((item) => [
+          { role: "user", text: item.question },
+          { role: "assistant", text: item.answer, sources: null, pages: item.pages_used },
+        ])
+        setMessages(loaded)
+      })
+      .catch(() => {})
+  }, [session?.session_id])
 
   const send = async () => {
     if (!input.trim()) return

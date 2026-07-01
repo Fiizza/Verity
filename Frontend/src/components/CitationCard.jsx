@@ -22,20 +22,22 @@ export default function CitationCard({ sources }) {
       </button>
 
       {open && (
-        <div className="mt-2 space-y-2 overflow-hidden animate-accordion-down">
-          {sources.map((src, i) => (
-            <div
-              key={i}
-              className="bg-sidebar/80 border border-border rounded-xl p-2.5 sm:p-3 hover:border-primary/40 transition-colors"
-            >
-              <div className="flex items-center flex-wrap gap-1.5 mb-1.5">
-                <span className="text-[11px] bg-primary/15 text-primary-soft px-2 py-0.5 rounded-full font-medium border border-primary/20">
-                  Page {src.page}
-                </span>
+        <div className="mt-2 overflow-hidden animate-accordion-down">
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
+            {sources.map((src, i) => (
+              <div
+                key={i}
+                className="bg-sidebar/80 border border-border rounded-xl p-2.5 sm:p-3 hover:border-primary/40 transition-colors"
+              >
+                <div className="flex items-center flex-wrap gap-1.5 mb-1.5">
+                  <span className="text-[11px] bg-primary/15 text-primary-soft px-2 py-0.5 rounded-full font-medium border border-primary/20">
+                    Page {src.page}
+                  </span>
+                </div>
+                <p className="text-muted text-xs leading-relaxed line-clamp-3 break-words">{src.text}</p>
               </div>
-              <p className="text-muted text-xs leading-relaxed line-clamp-3 break-words">{src.text}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
