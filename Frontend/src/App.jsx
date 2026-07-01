@@ -13,6 +13,21 @@ export default function App() {
   // FIX: sidebar is now a slide-in drawer on mobile, controlled from here
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // FIX: light/dark theme toggle. Persists the user's choice; falls back
+  // to their OS/browser preference the first time they visit.
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("verity_theme")
+    if (saved === "light" || saved === "dark") return saved
+    return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light")
+    localStorage.setItem("verity_theme", theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"))
+
   // FIX: keep the backend warm while the tab is open, to reduce
   // idle-sleep restarts (and the data loss that comes with them on
   // free-tier ephemeral hosting) during an active session.
@@ -40,14 +55,9 @@ export default function App() {
       <Toaster
         position="top-right"
         toastOptions={{
-          style: {
-            background: "rgba(17,17,24,0.9)",
-            color: "#F0EFFF",
-            border: "1px solid #1E1E2E",
-            backdropFilter: "blur(12px)",
-            borderRadius: "12px",
-            fontSize: "13px",
-          },
+          // FIX: was a hardcoded dark-mode-only style; now themed via
+          // Tailwind classes so toasts stay legible in light mode too.
+          className: "!bg-surface/90 !text-text !border !border-border !backdrop-blur-md !rounded-xl !text-[13px]",
         }}
       />
 
@@ -55,6 +65,8 @@ export default function App() {
         showBack={!!session}
         onBack={() => setSession(null)}
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <div className="flex flex-1 pt-16 h-[calc(100vh-4rem)]">
@@ -109,4 +121,5 @@ export default function App() {
     </div>
   )
 }
+
 

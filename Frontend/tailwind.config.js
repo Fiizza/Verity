@@ -1,23 +1,25 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+ 
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
-        bg: "#0A0A0F",
-        surface: "#111118",
-        sidebar: "#0D0D14",
-        card: "#111118",
-        border: "#1E1E2E",
+        bg: "rgb(var(--color-bg) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        sidebar: "rgb(var(--color-sidebar) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
         primary: {
-          DEFAULT: "#7C6FFF",
-          soft: "#A78BFA",
+          DEFAULT: "rgb(var(--color-primary) / <alpha-value>)",
+          soft: "rgb(var(--color-primary-soft) / <alpha-value>)",
         },
-        success: "#4ADE80",
+        success: "rgb(var(--color-success) / <alpha-value>)",
         text: {
-          DEFAULT: "#F0EFFF",
+          DEFAULT: "rgb(var(--color-text) / <alpha-value>)",
         },
-        muted: "#6B6B8A",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
