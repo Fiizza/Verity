@@ -1,8 +1,7 @@
-# Verity: Retrieval-Augmented PDF Research Platform
+# Verity: PDF Research Platform
 
 Verity is an AI-powered research platform that enables users to upload PDF documents and ask questions in natural language. It leverages a Retrieval-Augmented Generation (RAG) pipeline to retrieve relevant information and generate accurate, grounded responses with page-level citations.
 
----
 
 ## Features
 
@@ -16,7 +15,6 @@ Verity is an AI-powered research platform that enables users to upload PDF docum
 - Light and Dark mode support.
 - Persistent storage support through configurable `DATA_DIR`.
 
----
 
 ## System Architecture
 
@@ -45,7 +43,6 @@ Groq Large Language Model
 Grounded Response with Citations
 ```
 
----
 
 ## Retrieval-Augmented Generation (RAG) Pipeline
 
@@ -87,7 +84,6 @@ The highest-ranked chunks are passed to a **Groq LLM**, which generates grounded
 
 Session metadata, questions, answers, and citation history are stored in **SQLite**.
 
----
 
 ## Technology Stack
 
@@ -113,7 +109,6 @@ Session metadata, questions, answers, and citation history are stored in **SQLit
 - React Hot Toast
 - Lucide React
 
----
 
 ## Project Structure
 
@@ -140,7 +135,6 @@ frontend/
 │       └── CitationCard.jsx
 ```
 
----
 
 ## Installation
 
@@ -174,7 +168,7 @@ Run the backend:
 uvicorn main:app --reload
 ```
 
----
+
 
 ### Frontend
 
@@ -196,7 +190,7 @@ Run:
 npm run dev
 ```
 
----
+
 
 ## API Endpoints
 
@@ -210,7 +204,7 @@ npm run dev
 | GET | `/sessions/{session_id}/history` | Conversation history |
 | DELETE | `/sessions/{session_id}` | Delete session |
 
----
+
 
 ## Design Highlights
 
@@ -222,7 +216,6 @@ npm run dev
 - Modular backend architecture
 - Optimized semantic search using FAISS
 
----
 
 ## Deployment
 
@@ -241,7 +234,6 @@ If an index is unavailable after deployment, the application prompts the user to
 
 This project is intended for educational and research purposes.
 
----
 
 ## Author
 
