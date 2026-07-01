@@ -1,9 +1,6 @@
 ---
 title: Verity
-colorFrom: blue
-colorTo: purple
 sdk: docker
-pinned: false
 ---
 
 # Verity: Retrieval-Augmented PDF Platform
